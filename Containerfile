@@ -7,7 +7,35 @@ COPY system_files /
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,dst=/boot apt update -y && \
-  apt install -y btrfs-progs dosfstools e2fsprogs fdisk firmware-linux-free linux-image-generic skopeo systemd systemd-boot* xfsprogs && \
+  apt install -y \
+  btrfs-progs \
+  ca-certificates \
+  curl \
+  dracut \
+  dosfstools \
+  e2fsprogs \
+  fdisk \
+  firmware-linux-free \
+  gdisk \
+  git \
+  git-lfs \
+  gpg \
+  iproute2 \
+  iputils-ping \
+  linux-image-generic \
+  network-manager \
+  parted \
+  rsync \
+  skopeo \
+  sudo \
+  tpm2-tools \
+  xfsprogs \
+  zstd \
+  cryptsetup \
+  libfido2-1 \
+  libfido2-dev \
+  libtss2-esys-3.0.2-0 \
+  libp11-kit0 && \
   cp /boot/vmlinuz-* "$(find /usr/lib/modules -maxdepth 1 -type d | tail -n 1)/vmlinuz" && \
   apt clean -y
 
@@ -30,12 +58,11 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
       xfwm4 \
       adwaita-qt \
       qt5ct \
-      lightdm \
-      lightdm-gtk-greeter \
-      lightdm-gtk-greeter-settings \
+      gdm \
       thunar \
       flatpak && \
-    flatpak remote-add --if-not-exists -y flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+    flatpak remote-add --if-not-exists -y flathub https://dl.flathub.org/repo/flathub.flatpakrepo && \
+    systemctl enable gdm && \
 
 ENV CARGO_HOME=/tmp/rust
 ENV RUSTUP_HOME=/tmp/rust
@@ -60,6 +87,16 @@ RUN sed -i 's|^HOME=.*|HOME=/var/home|' "/etc/default/useradd" && \
     echo "$(for dir in opt home srv mnt usrlocal ; do echo "d /var/$dir 0755 root root -" ; done)" | tee -a "/usr/lib/tmpfiles.d/bootc-base-dirs.conf" && \
     printf "d /var/roothome 0700 root root -\nd /run/media 0755 root root -" | tee -a "/usr/lib/tmpfiles.d/bootc-base-dirs.conf" && \
     printf '[composefs]\nenabled = yes\n[sysroot]\nreadonly = true\n' | tee "/usr/lib/ostree/prepare-root.conf"
+
+# Use proper home directory for new users and enable mounts
+RUN sed -i 's|.*HOME=/home|HOME=/var/home|' "/etc/default/useradd" && \
+  systemctl enable home.mount && \
+  systemctl enable root.mount && \
+  systemctl enable srv.mount && \
+  systemctl enable mnt.mount && \
+  systemctl enable media.mount && \
+  systemctl enable opt.mount && \
+  systemctl enable usr-local.mount
 
 # https://bootc-dev.github.io/bootc/bootc-images.html#standard-metadata-for-bootc-compatible-images
 LABEL containers.bootc 1
