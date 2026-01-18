@@ -4,8 +4,6 @@ on:
   pull_request:
     branches:
       - main
-  schedule:
-    - cron: "05 10 * * *" # 10:05am UTC everyday
   push:
     branches:
       - main
@@ -14,9 +12,9 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_DESC: "Experimental debian-bootc POC image"
-  IMAGE_KEYWORDS: "bootc,debian"
-  IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/230667510?s=400&u=cb912a5db49aee164a609a0fb4967d2d8170feb9&v=4"
+  IMAGE_DESC: "Distro for yo old ahh puter or smth idk"
+  IMAGE_KEYWORDS: "bootc,debian,xfce"
+  IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/237492973?s=400&v=4"
   IMAGE_NAME: "${{ github.event.repository.name }}"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
   DEFAULT_TAG: "latest"
@@ -30,17 +28,38 @@ jobs:
       id-token: write
     timeout-minutes: 60
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         platform: ["amd64", "arm64"]
     runs-on: ${{ matrix.platform == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     steps:
+      - name: Mount BTRFS for podman storage
+        if: ${{ matrix.platform != 'arm64' }}
+        uses: ublue-os/container-storage-action@911baca08baf30c8654933e9e9723cb399892140
+        continue-on-error: true
+        with:
+          target-dir: /var/lib/containers
+          mount-opts: compress-force=zstd:2
+
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        with:
+          submodules: true
 
       - name: Build image
         id: build
-        run: podman build -t "${IMAGE_NAME}:${DEFAULT_TAG}" -f ./Containerfile .
+        run: sudo podman build -t "${IMAGE_NAME}:${DEFAULT_TAG}" -f ./Containerfile .
+
+      - name: Rechunk Image
+        run: sudo podman run --rm --privileged -v /var/lib/containers:/var/lib/containers --entrypoint /usr/libexec/bootc-base-imagectl "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" rechunk --max-layers 67 "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" "localhost/${IMAGE_NAME}:${DEFAULT_TAG}"
+
+      # TODO: remove me when we have a new podman in 26.04 runners
+      # needed because old podman doesn't push layer annotations for
+      # the rpm-ostree rechunker at all
+      - name: Install Podman from Brew
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        run: |
+          /home/linuxbrew/.linuxbrew/bin/brew install podman
 
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
@@ -48,7 +67,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LOGIN_USER: ${{ github.actor }}
         run: |
-          echo "${GITHUB_TOKEN}" | podman login -u "${LOGIN_USER}" --password-stdin "ghcr.io"
+          echo "${GITHUB_TOKEN}" | sudo podman login -u "${LOGIN_USER}" --password-stdin "ghcr.io"
           echo "${GITHUB_TOKEN}" | docker login -u "${LOGIN_USER}" --password-stdin "ghcr.io" # For cosign
 
       - name: Push to GHCR
@@ -62,9 +81,15 @@ jobs:
           MAX_RETRIES: 3
         run: |
           set -x
+          # HACK: push a second time so layer annotations are present
+          # TODO: remove me when https://github.com/containers/podman/issues/27796 fixed
+          for i in $(seq "${MAX_RETRIES}"); do
+            sudo /home/linuxbrew/.linuxbrew/bin/podman push --digestfile=/tmp/digestfile "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" "${IMAGE_REGISTRY}/${IMAGE_NAME}:${DEFAULT_TAG}-${PLATFORM}" && break || sleep $((5 * i));
+          done
+          echo "remote_image_digest=$(< /tmp/digestfile)" | tee "${GITHUB_OUTPUT}"
 
           for i in $(seq "${MAX_RETRIES}"); do
-            podman push --digestfile=/tmp/digestfile "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" "${IMAGE_REGISTRY}/${IMAGE_NAME}:${DEFAULT_TAG}-${PLATFORM}" && break || sleep $((5 * i));
+            sudo /home/linuxbrew/.linuxbrew/bin/podman push --digestfile=/tmp/digestfile "localhost/${IMAGE_NAME}:${DEFAULT_TAG}" "${IMAGE_REGISTRY}/${IMAGE_NAME}:${DEFAULT_TAG}-${PLATFORM}" && break || sleep $((5 * i));
           done
           echo "remote_image_digest=$(< /tmp/digestfile)" | tee "${GITHUB_OUTPUT}"
 
@@ -232,6 +257,12 @@ jobs:
               podman manifest annotate --index --annotation "${LABEL}" "${TARGET_MANIFEST}"
             done <<< "${LABELS}"
 
+            while IFS= read -r TAG; do
+              podman manifest push --all=false --digestfile=/tmp/digestfile "${TARGET_MANIFEST}" "${TARGET_MANIFEST}:${TAG}"
+            done <<< "${TAGS}"
+
+          # HACK: push a second time so layer annotations are present
+          # TODO: remove me when https://github.com/containers/podman/issues/27796 fixed
             while IFS= read -r TAG; do
               podman manifest push --all=false --digestfile=/tmp/digestfile "${TARGET_MANIFEST}" "${TARGET_MANIFEST}:${TAG}"
             done <<< "${TAGS}"
