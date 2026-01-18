@@ -58,11 +58,14 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
       xfwm4 \
       adwaita-qt \
       qt5ct \
-      gdm \
+      gdm3 \
       thunar \
       flatpak && \
     flatpak remote-add --if-not-exists -y flathub https://dl.flathub.org/repo/flathub.flatpakrepo && \
+    systemctl set-default graphical.target && \
     systemctl enable gdm && \
+    printf 'WaylandEnable=false' | tee "/etc/gdm/EnableX11.conf" && \
+    printf 'WaylandEnable=false' | tee "/etc/gdm3/EnableX11.conf"
 
 ENV CARGO_HOME=/tmp/rust
 ENV RUSTUP_HOME=/tmp/rust
