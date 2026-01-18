@@ -37,7 +37,8 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
   libtss2-esys-3.0.2-0 \
   libp11-kit0 \
   systemd \
-  systemd-boot && \
+  systemd-boot \
+  systemd-boot-tools && \
   cp /boot/vmlinuz-* "$(find /usr/lib/modules -maxdepth 1 -type d | tail -n 1)/vmlinuz" && \
   apt clean -y
 
