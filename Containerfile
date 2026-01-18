@@ -1,4 +1,8 @@
+FROM scratch AS ctx
+
 FROM docker.io/library/debian:testing
+
+COPY system_files /
 
 ARG DEBIAN_FRONTEND=noninteractive
 
