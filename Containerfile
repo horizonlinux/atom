@@ -71,8 +71,6 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
     flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo && \
     systemctl set-default graphical.target && \
     systemctl enable gdm && \
-    touch /etc/gdm/EnableX11.conf && printf 'WaylandEnable=false' | tee "/etc/gdm/EnableX11.conf" && \
-    touch /etc/gdm3/EnableX11.conf && printf 'WaylandEnable=false' | tee "/etc/gdm3/EnableX11.conf" && \
     apt clean -y
 
 ENV CARGO_HOME=/tmp/rust
