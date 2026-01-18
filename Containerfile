@@ -1,4 +1,4 @@
-FROM docker.io/library/debian:unstable
+FROM docker.io/library/debian:testing
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -8,8 +8,30 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
   apt clean -y
 
 # Setup a temporary root passwd (changeme) for dev purposes
-# RUN apt update -y && apt install -y whois
-# RUN usermod -p "$(echo "changeme" | mkpasswd -s)" root
+ RUN apt update -y && apt install -y whois
+ RUN usermod -p "$(echo "changeme" | mkpasswd -s)" root
+
+ RUN apt update -y && apt install -y \
+      libxfce4ui-utils \
+      thunar \
+      xfce4-appfinder \
+      xfce4-panel \
+      xfce4-pulseaudio-plugin \
+      xfce4-whiskermenu-plugin \
+      xfce4-session \
+      xfce4-settings \
+      gnome-terminal \
+      xfconf \
+      xfdesktop4 \
+      xfwm4 \
+      adwaita-qt \
+      qt5ct \
+      lightdm \
+      lightdm-gtk-greeter \
+      lightdm-gtk-greeter-settings \
+      thunar \
+      flatpak && \
+    flatpak remote-add --if-not-exists -y flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
 ENV CARGO_HOME=/tmp/rust
 ENV RUSTUP_HOME=/tmp/rust
