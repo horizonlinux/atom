@@ -59,6 +59,7 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
       adwaita-qt \
       qt5ct \
       gdm3 \
+      gnome-initial-setup \
       thunar \
       flatpak && \
     flatpak remote-add --if-not-exists -y flathub https://dl.flathub.org/repo/flathub.flatpakrepo && \
