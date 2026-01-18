@@ -97,15 +97,8 @@ RUN sed -i 's|^HOME=.*|HOME=/var/home|' "/etc/default/useradd" && \
     printf "d /var/roothome 0700 root root -\nd /run/media 0755 root root -" | tee -a "/usr/lib/tmpfiles.d/bootc-base-dirs.conf" && \
     printf '[composefs]\nenabled = yes\n[sysroot]\nreadonly = true\n' | tee "/usr/lib/ostree/prepare-root.conf"
 
-# Use proper home directory for new users and enable mounts
-RUN sed -i 's|.*HOME=/home|HOME=/var/home|' "/etc/default/useradd" && \
-  systemctl enable home.mount && \
-  systemctl enable root.mount && \
-  systemctl enable srv.mount && \
-  systemctl enable mnt.mount && \
-  systemctl enable media.mount && \
-  systemctl enable opt.mount && \
-  systemctl enable usr-local.mount
+# Use proper home directory for new users
+RUN sed -i 's|.*HOME=/home|HOME=/var/home|' "/etc/default/useradd"
 
 # https://bootc-dev.github.io/bootc/bootc-images.html#standard-metadata-for-bootc-compatible-images
 LABEL containers.bootc 1
