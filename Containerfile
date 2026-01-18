@@ -7,7 +7,8 @@ COPY system_files /
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,dst=/boot apt update -y && \
-  apt install -y \
+  apt install --no-install-recommends -y \
+  rust-coreutils \ # eff GNU ( as much it is possible to ) 
   btrfs-progs \
   ca-certificates \
   curl \
@@ -40,10 +41,10 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
   apt clean -y
 
 # Setup a temporary root passwd (changeme) for dev purposes
- RUN apt update -y && apt install -y whois
+ RUN apt update -y && apt install -y --no-install-recommends whois
  RUN usermod -p "$(echo "changeme" | mkpasswd -s)" root
 
- RUN apt update -y && apt install -y \
+ RUN apt update -y && apt install -y --no-install-recommends \
       libxfce4ui-utils \
       thunar \
       xfce4-appfinder \
